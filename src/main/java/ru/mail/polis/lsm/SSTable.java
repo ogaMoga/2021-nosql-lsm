@@ -164,24 +164,14 @@ public class SSTable implements Closeable {
         }
     }
 
-    Iterator<Record> range(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey) {
+    Iterator<Record> range(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey, boolean isDirectOrder) {
         synchronized (this) {
             return new DiskIterator(fromKey,
                     toKey,
                     mmap.asReadOnlyBuffer(),
                     idx.asReadOnlyBuffer(),
-                    true);
-        }
-
-    }
-
-    Iterator<Record> descendingRange(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey) {
-        synchronized (this) {
-            return new DiskIterator(fromKey,
-                    toKey,
-                    mmap.asReadOnlyBuffer(),
-                    idx.asReadOnlyBuffer(),
-                    false);
+                    isDirectOrder);
         }
     }
+
 }

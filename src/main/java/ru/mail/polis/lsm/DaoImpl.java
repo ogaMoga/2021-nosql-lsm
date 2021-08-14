@@ -40,68 +40,47 @@ public class DaoImpl implements DAO {
 
     @Override
     public Iterator<Record> range(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey) {
-        synchronized (this) {
-            List<Iterator<Record>> iterators = new ArrayList<>(tables.size() + 1);
-            for (SSTable ssTable : tables) {
-                iterators.add(ssTable.range(fromKey, toKey));
-            }
-
-            Iterator<Record> memoryRange = map(fromKey, toKey).values().iterator();
-
-            iterators.add(memoryRange);
-            Iterator<Record> merged = DAO.merge(iterators);
-            return new FilterIterator(merged, toKey, true);
-        }
+        return getRange(fromKey, toKey, true);
     }
 
     @Override
     public Iterator<Record> descendingRange(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey) {
+        return getRange(fromKey, toKey, false);
+    }
+
+    private Iterator<Record> getRange(@Nullable ByteBuffer fromKey, @Nullable ByteBuffer toKey, boolean isDirectOrder) {
         synchronized (this) {
             List<Iterator<Record>> iterators = new ArrayList<>(tables.size() + 1);
             for (SSTable ssTable : tables) {
-                iterators.add(ssTable.descendingRange(fromKey, toKey));
+                iterators.add(ssTable.range(fromKey, toKey, isDirectOrder));
             }
 
-            Iterator<Record> memoryRange = descendingMap(fromKey, toKey).values().iterator();
+            Iterator<Record> memoryRange = map(fromKey, toKey, isDirectOrder).values().iterator();
 
             iterators.add(memoryRange);
-            Iterator<Record> merged = DAO.merge(iterators, false);
-            return new FilterIterator(merged, fromKey, false);
+            Iterator<Record> merged = DAO.merge(iterators, isDirectOrder);
+            return new FilterIterator(merged,
+                    isDirectOrder ? toKey : fromKey,
+                    isDirectOrder);
         }
     }
 
-    private SortedMap<ByteBuffer, Record> map(@Nullable ByteBuffer fromKey,@Nullable ByteBuffer toKey) {
+    private SortedMap<ByteBuffer, Record> map(@Nullable ByteBuffer fromKey,@Nullable ByteBuffer toKey,
+                                              boolean isDirectOrder) {
         if ((fromKey == null) && (toKey == null)) {
-            return map;
+            return isDirectOrder ? map : map.descendingMap();
         }
 
         if (fromKey == null) {
-            return map.headMap(toKey);
+            return isDirectOrder ? map.headMap(toKey) : map.descendingMap().tailMap(toKey, false);
         }
 
         if (toKey == null) {
-            return map.tailMap(fromKey);
+            return isDirectOrder ? map.tailMap(fromKey) : map.descendingMap().headMap(fromKey, true);
         }
 
-        return map.subMap(fromKey, toKey);
-    }
-
-    private SortedMap<ByteBuffer, Record> descendingMap(@Nullable ByteBuffer fromKey,@Nullable ByteBuffer toKey) {
-        NavigableMap<ByteBuffer, Record> descMap = map.descendingMap();
-
-        if ((fromKey == null) && (toKey == null)) {
-            return descMap;
-        }
-
-        if (fromKey == null) {
-            return descMap.tailMap(toKey, false);
-        }
-
-        if (toKey == null) {
-            return descMap.headMap(fromKey, true);
-        }
-
-        return descMap.subMap(toKey, false, fromKey, true);
+        return isDirectOrder ? map.subMap(fromKey, toKey) :
+                map.descendingMap().subMap(toKey, false, fromKey, true);
     }
 
     @Override
@@ -189,5 +168,4 @@ public class DaoImpl implements DAO {
         Path idx = dir.resolve(idxName);
         return SSTable.write(data, file, idx);
     }
-
 }

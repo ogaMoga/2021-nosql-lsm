@@ -40,8 +40,6 @@ class BasicTest {
         ByteBuffer notExistedKey = ByteBuffer.wrap("NOT_EXISTED_KEY".getBytes(StandardCharsets.UTF_8));
         Iterator<Record> shouldBeEmpty = dao.range(notExistedKey, null);
         assertFalse(shouldBeEmpty.hasNext());
-        Iterator<Record> shouldBeEmptyReverse = dao.range(notExistedKey, null);
-        assertFalse(shouldBeEmptyReverse.hasNext());
     }
 
     @Test
@@ -80,9 +78,7 @@ class BasicTest {
         map.forEach((k, v) -> dao.upsert(Record.of(k, v)));
 
         Iterator<Record> range = dao.range(key(5), null);
-        Iterator<Record> descendingRange = dao.descendingRange(key(5), null);
         assertEquals(range, new TreeMap<>(generateMap(5, 10)).entrySet());
-        assertEquals(descendingRange, new TreeMap<>(generateMap(5, 10)).descendingMap().entrySet());
     }
 
     @Test
@@ -91,9 +87,7 @@ class BasicTest {
 
         map.forEach((k, v) -> dao.upsert(Record.of(k, v)));
         Iterator<Record> range = dao.range(key(9), null);
-        Iterator<Record> descendingRange = dao.descendingRange(key(9), null);
         assertEquals(range, new TreeMap<>(generateMap(9, 10)).entrySet());
-        assertEquals(descendingRange, new TreeMap<>(generateMap(9, 10)).descendingMap().entrySet());
     }
 
     @Test
@@ -160,7 +154,5 @@ class BasicTest {
         dao.upsert(Record.tombstone(wrap("NOT_EXISTED_KEY")));
 
         assertFalse(dao.range(null, null).hasNext());
-        assertFalse(dao.descendingRange(null, null).hasNext());
     }
-
 }

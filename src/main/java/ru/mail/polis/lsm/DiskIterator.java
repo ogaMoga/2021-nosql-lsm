@@ -28,6 +28,19 @@ public class DiskIterator implements Iterator<Record> {
         getCurrent();
     }
 
+    @Override
+    public boolean hasNext() {
+        return current != null;
+    }
+
+    @Override
+    public Record next() {
+        if (!hasNext()) throw new NoSuchElementException();
+        Record result = current;
+        getCurrent();
+        return result;
+    }
+
     private void getCurrent() {
         if (isDirectOrder) {
             getNextRecord();
@@ -95,6 +108,17 @@ public class DiskIterator implements Iterator<Record> {
         }
     }
 
+    private void toFirstRecord() {
+        if (fromKey == null) {
+            buffer.position(0);
+            return;
+        }
+        ByteBuffer buf = buffer.asReadOnlyBuffer();
+        int maxSize = buffer.remaining();
+        int fromOffset = offset(buf, fromKey);
+        buffer.position(fromOffset == -1 ? maxSize : fromOffset);
+    }
+
     private void toLastRecord() {
         if (toKey == null) {
             idx.position(idx.remaining());
@@ -117,17 +141,6 @@ public class DiskIterator implements Iterator<Record> {
         } else {
             return -1;
         }
-    }
-
-    private void toFirstRecord() {
-        if (fromKey == null) {
-            buffer.position(0);
-            return;
-        }
-        ByteBuffer buf = buffer.asReadOnlyBuffer();
-        int maxSize = buffer.remaining();
-        int fromOffset = offset(buf, fromKey);
-        buffer.position(fromOffset == -1 ? maxSize : fromOffset);
     }
 
     private int offset(ByteBuffer buffer, ByteBuffer key) {
@@ -173,18 +186,5 @@ public class DiskIterator implements Iterator<Record> {
         idx.position(pos);
 
         return idx.getInt(pos);
-    }
-
-    @Override
-    public boolean hasNext() {
-        return current != null;
-    }
-
-    @Override
-    public Record next() {
-        if (!hasNext()) throw new NoSuchElementException();
-        Record result = current;
-        getCurrent();
-        return result;
     }
 }

@@ -1,5 +1,8 @@
 package ru.mail.polis.lsm;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.io.TempDir;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -10,15 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.Random;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
@@ -151,5 +147,46 @@ class Utils {
                         return FileVisitResult.CONTINUE;
                     }
                 });
+    }
+
+    static long getFilesCount(@TempDir Path dir) throws IOException {
+        try (Stream<Path> files = Files.list(dir)) {
+            return files.count();
+        }
+    }
+
+    static long getFilesSize(@TempDir Path dir) throws IOException {
+        try (Stream<Path> files = Files.list(dir)) {
+            return files
+                    .map(file -> {
+                        try {
+                            return Files.size(file);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        return 0L;
+                    })
+                    .reduce(0L, Long::sum);
+        }
+    }
+
+    static void verifyNext(byte[] suffix, Iterator<Record> range, int index) {
+        ByteBuffer key = keyWithSuffix(index, suffix);
+        ByteBuffer value = valueWithSuffix(index, suffix);
+
+        Record next = range.next();
+
+        Assertions.assertEquals(key, next.getKey());
+        Assertions.assertEquals(value, next.getValue());
+    }
+
+    static void prepareHugeDao(@TempDir Path data, int recordsCount, byte[] suffix) throws IOException {
+        try (DAO dao = TestDaoWrapper.create(new DAOConfig(data))) {
+            for (int i = 0; i < recordsCount; i++) {
+                ByteBuffer key = keyWithSuffix(i, suffix);
+                ByteBuffer value = valueWithSuffix(i, suffix);
+                dao.upsert(Record.of(key, value));
+            }
+        }
     }
 }
